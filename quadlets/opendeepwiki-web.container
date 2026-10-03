@@ -1,0 +1,24 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=OpenDeepWiki web UI
+After=opendeepwiki-api.service
+Requires=opendeepwiki-api.service
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/opendeepwiki-web.env
+ContainerName=opendeepwiki-web
+Image=crpi-j9ha7sxwhatgtvj4.cn-shenzhen.personal.cr.aliyuncs.com/open-deepwiki/opendeepwiki-web@sha256:f4ed99a8c83be55d6af95bcb32b7e3f2912323a00af0a09cf62cd5d10046eb7e
+Pod=opendeepwiki.pod
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=on-failure
+RestartSec=30s
+MemoryMax=512M
+
+[Install]
+WantedBy=default.target

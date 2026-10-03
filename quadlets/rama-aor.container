@@ -1,0 +1,34 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Agent-o-rama UI on :1974
+After=local-fs.target network-online.target rama-conductor.service
+Wants=rama-conductor.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=rama-aor
+# Match the local UI JVM too: the Rama pod shares network, not this PID namespace.
+HealthCmd=grep -aq '[c]om.rpl.agent_o_rama.impl.ui.launch' /proc/[0-9]*/cmdline && curl -fsS --max-time 5 --output /dev/null http://127.0.0.1:1974/
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=180s
+Pod=rama.pod
+Image=rama-runtime.build
+Volume=/mnt/service-data/rama/rama-1.9.0:/opt/rama:z
+Volume=/mnt/service-data/rama/data:/data:z
+Volume=/mnt/service-data/rama/agent-o-rama-0.10.0:/opt/aor:z
+Volume=/mnt/service-data/rama/bin:/opt/bin:ro,z
+Exec=/opt/bin/aor-start.sh
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=always
+RestartSec=30s
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

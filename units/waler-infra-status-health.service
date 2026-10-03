@@ -1,0 +1,8 @@
+[Unit]
+Description=Check lifecycle freshness independent of external disk
+OnFailure=waler-maintenance-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/walerie-server/scripts/publish-status.py --verify-fresh
+TimeoutStartSec=60s

@@ -1,0 +1,24 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Zulip Memcached
+
+[Container]
+Image=docker.io/memcached:alpine
+ContainerName=zulip-memcached
+Network=zulip.network
+HealthCmd=printf "stats\r\nquit\r\n" | nc -w 2 127.0.0.1 11211 | grep -q "^STAT pid "
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=30s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

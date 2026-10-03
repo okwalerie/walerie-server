@@ -1,0 +1,27 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=OpenDeepWiki API
+After=opendeepwiki-pod.service
+Requires=opendeepwiki-pod.service
+
+[Container]
+ContainerName=opendeepwiki-api
+Image=localhost/opendeepwiki-api:2026-07-28-git
+Pod=opendeepwiki.pod
+EnvironmentFile=/mnt/service-data/opendeepwiki/opendeepwiki.env
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/opendeepwiki-api.env
+Volume=/mnt/service-data/opendeepwiki/data:/data:z
+Volume=/mnt/service-data/deepwiki-open/repos:/imports:ro,z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=on-failure
+RestartSec=30s
+MemoryMax=2G
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,43 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Rama supervisor (launches worker JVMs)
+After=local-fs.target network-online.target rama-conductor.service
+Wants=rama-conductor.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=rama-supervisor
+# Process liveness only: no supervisor HTTP endpoint; shared-pod UI belongs to conductor.
+HealthCmd=grep -aq rpl.rama.distributed.daemon.supervisor /proc/1/cmdline && kill -0 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=180s
+Pod=rama.pod
+Image=rama-runtime.build
+Volume=/mnt/service-data/rama/rama-1.9.0:/opt/rama:z
+Volume=/mnt/service-data/rama/data:/data:z
+# Worker JVMs are children of the supervisor and inherit this environment:
+# TYPESAFE_API_KEY (Jev) and, once created, CLAUDE_CODE_OAUTH_TOKEN.
+Volume=/mnt/service-data/rama/bin:/opt/bin:ro,z
+EnvironmentFile=/mnt/service-data/rama/secrets/aor.env
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/rama-supervisor.env
+
+Exec=/opt/rama/rama supervisor
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+# Refresh secrets from Bitwarden Secrets Manager on every start. Uses this
+# host's own token in ~/.config/bws/access-token; if it's missing or the vault
+# is unreachable, the existing aor.env is kept and the service still starts.
+ExecStartPre=/usr/bin/env BWS_BIN=%h/.local/bin/bws %h/.local/bin/with-bws --env-file /mnt/service-data/rama/secrets/aor.env --keep-on-failure ?TYPESAFE_API_KEY ?CLAUDE_CODE_OAUTH_TOKEN
+Restart=always
+RestartSec=30s
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

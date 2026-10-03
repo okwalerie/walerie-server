@@ -1,0 +1,35 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Zulip Server
+After=data-dirs.service zulip-db.service zulip-memcached.service zulip-rabbitmq.service zulip-redis.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+Image=localhost/norberts-zulip:11.5-xauth
+ContainerName=zulip
+Volume=/mnt/service-data/zulip-data:/data:Z
+Volume=%h/.config/zulip/secrets/postgres_password:/run/secrets/zulip__postgres_password:ro,z
+Volume=%h/.config/zulip/secrets/memcached_password:/run/secrets/zulip__memcached_password:ro,z
+Volume=%h/.config/zulip/secrets/rabbitmq_password:/run/secrets/zulip__rabbitmq_password:ro,z
+Volume=%h/.config/zulip/secrets/redis_password:/run/secrets/zulip__redis_password:ro,z
+Volume=%h/.config/zulip/secrets/secret_key:/run/secrets/zulip__secret_key:ro,z
+Volume=%h/.config/zulip/secrets/email_password:/run/secrets/zulip__email_password:ro,z
+EnvironmentFile=%h/.config/zulip/config.env
+Network=zulip.network
+PublishPort=127.0.0.1:8081:80
+HealthCmd=CMD-SHELL curl -sf http://localhost:80/api/v1/server_settings || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=120s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

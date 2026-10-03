@@ -1,0 +1,30 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=HOME-109 authenticated reverse proxy
+After=network-online.target
+Wants=network-online.target
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/home109-public.env
+ContainerName=home109-public
+Image=localhost/home109-caddy:2.10.2-no-filecap
+Network=host
+Volume=/mnt/service-data/home109-public/Caddyfile:/etc/caddy/Caddyfile:ro,Z
+ReadOnly=true
+NoNewPrivileges=true
+DropCapability=all
+Tmpfs=/data:rw,noexec,nosuid,nodev,size=16m
+Tmpfs=/config:rw,noexec,nosuid,nodev,size=4m
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=on-failure
+RestartSec=30s
+MemoryMax=128M
+
+[Install]
+WantedBy=default.target

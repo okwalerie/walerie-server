@@ -1,0 +1,30 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Zulip PostgreSQL
+After=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/zulip-db.env
+Image=docker.io/zulip/zulip-postgresql:14
+ContainerName=zulip-db
+Volume=/mnt/service-data/zulip-db:/var/lib/postgresql/data:Z
+Volume=%h/.config/zulip/secrets/postgres_password:/run/secrets/postgres_password:ro,z
+Network=zulip.network
+HealthCmd=CMD-SHELL pg_isready -U zulip || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=30s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

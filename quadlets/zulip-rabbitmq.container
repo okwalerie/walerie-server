@@ -1,0 +1,28 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Zulip RabbitMQ
+After=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+Image=docker.io/rabbitmq:4.2
+ContainerName=zulip-rabbitmq
+Volume=/mnt/service-data/zulip-rabbitmq:/var/lib/rabbitmq:Z
+EnvironmentFile=%h/.config/zulip/rabbitmq.env
+Network=zulip.network
+HealthCmd=CMD-SHELL rabbitmq-diagnostics -q check_running || exit 1
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=60s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

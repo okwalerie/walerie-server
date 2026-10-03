@@ -1,0 +1,11 @@
+[Unit]
+Description=Refresh Waler lifecycle status every five minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+AccuracySec=15s
+Unit=waler-infra-status.service
+
+[Install]
+WantedBy=timers.target

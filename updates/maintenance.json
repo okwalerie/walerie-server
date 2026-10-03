@@ -1,0 +1,7 @@
+{
+  "armed": false,
+  "backup_contract": "waler-recovery-v1",
+  "backup_receipt": "/var/home/core/.local/state/waler-backup/verified-recovery.json",
+  "max_backup_age_hours": 26,
+  "drain_budget_seconds": 600
+}

@@ -1,0 +1,30 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Nextcloud Application
+After=data-dirs.service nextcloud-db.service nextcloud-redis.service
+Requires=data-dirs.service nextcloud-pod-pod.service
+Wants=nextcloud-db.service nextcloud-redis.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/nextcloud-app.env
+HealthCmd=curl --fail --silent --show-error --max-time 3 --output /dev/null http://127.0.0.1/status.php
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=120s
+Image=docker.io/library/nextcloud:stable
+Pod=nextcloud-pod.pod
+Volume=/mnt/service-data/nextcloud/html:/var/www/html:Z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

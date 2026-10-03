@@ -1,0 +1,26 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Loopback identity proxy for Hermes Dashboard
+After=network-online.target hermes-dashboard.service data-dirs.service
+Wants=network-online.target
+Requires=hermes-dashboard.service data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=hermes-dashboard-proxy
+Image=docker.io/nginxinc/nginx-unprivileged:alpine
+Network=host
+Volume=/mnt/service-data/hermes-dashboard-proxy/default.conf:/etc/nginx/conf.d/default.conf:ro,Z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+ExecStartPost=/usr/sbin/tailscale serve --bg --https=9119 http://127.0.0.1:9120
+ExecStopPost=-/usr/sbin/tailscale serve --https=9119 off
+
+[Install]
+WantedBy=default.target

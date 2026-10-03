@@ -1,0 +1,27 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Nextcloud Redis Cache
+After=data-dirs.service nextcloud-pod-pod.service
+Requires=data-dirs.service nextcloud-pod-pod.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+HealthCmd=redis-cli ping | grep -qx PONG
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=10s
+Image=docker.io/library/redis:7-alpine
+Pod=nextcloud-pod.pod
+Volume=/mnt/service-data/nextcloud/redis:/data:Z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

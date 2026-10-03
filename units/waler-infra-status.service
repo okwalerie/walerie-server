@@ -1,0 +1,10 @@
+[Unit]
+Description=Publish allowlisted Waler lifecycle and mount status
+RequiresMountsFor=/mnt/service-data
+
+[Service]
+Type=oneshot
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStart=/usr/bin/python3 %h/walerie-server/scripts/publish-status.py --out /mnt/service-data/svc/dashboard
+TimeoutStartSec=180
+Nice=10

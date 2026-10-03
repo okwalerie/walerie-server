@@ -1,0 +1,9 @@
+[Unit]
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+
+[Network]
+NetworkName=forgejo
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage

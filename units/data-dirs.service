@@ -1,0 +1,12 @@
+[Unit]
+Description=Create service-data directories
+RequiresMountsFor=/mnt/service-data
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/bash -c 'mkdir -p /mnt/service-data/forgejo/data /mnt/service-data/forgejo/config /mnt/service-data/nextcloud/html /mnt/service-data/nextcloud/db /mnt/service-data/nextcloud/redis /mnt/service-data/syncthing /mnt/service-data/homepage/config /mnt/service-data/supermemory/data && chown core:core /mnt/service-data/supermemory && chmod 0700 /mnt/service-data/supermemory /mnt/service-data/supermemory/data && chown core:core /mnt/service-data /mnt/service-data/forgejo /mnt/service-data/nextcloud /mnt/service-data/syncthing /mnt/service-data/homepage /mnt/service-data/homepage/config && chmod 0775 /mnt/service-data /mnt/service-data/forgejo /mnt/service-data/nextcloud /mnt/service-data/syncthing /mnt/service-data/homepage /mnt/service-data/homepage/config'
+
+[Install]
+WantedBy=default.target

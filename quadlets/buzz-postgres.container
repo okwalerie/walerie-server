@@ -1,0 +1,32 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Buzz PostgreSQL
+After=network-online.target data-dirs.service buzz-network.service
+Requires=data-dirs.service buzz-network.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=buzz-postgres
+Image=docker.io/library/postgres@sha256:742f40ea20b9ff2ff31db5458d127452988a2164df9e17441e191f3b72252193
+Network=buzz.network
+UserNS=keep-id:uid=70,gid=70
+EnvironmentFile=/mnt/service-data/buzz/postgres.env
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/buzz-postgres.env
+Volume=/mnt/service-data/buzz/postgres:/var/lib/postgresql/data:Z
+HealthCmd=pg_isready -h 127.0.0.1 -t 3 -U buzz -d buzz
+HealthInterval=5s
+HealthTimeout=5s
+HealthRetries=12
+HealthStartPeriod=10s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,29 @@
+[Unit]
+Description=Supervised daily default-profile Hermes maintenance (HOME-261)
+After=network-online.target
+Wants=network-online.target
+OnFailure=waler-maintenance-alert@%n.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/.hermes/hermes-agent
+Environment=HERMES_HOME=/var/home/core/.hermes
+Environment=PATH=/var/home/core/.local/bin:/var/home/core/.hermes/hermes-agent/venv/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin
+ExecStart=%h/.hermes/hermes-agent/venv/bin/python %h/.local/libexec/waler-hermes-update --apply
+ExecStopPost=/usr/bin/python3 %h/.local/libexec/waler-hermes-update --supervisor-failure
+UMask=0077
+MemoryHigh=2G
+MemoryMax=3G
+MemorySwapMax=512M
+CPUQuota=150%
+TasksMax=512
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=50min
+TimeoutStopSec=60s
+TimeoutStopFailureMode=kill
+KillMode=control-group
+Restart=no
+StandardOutput=journal
+StandardError=journal

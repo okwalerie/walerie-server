@@ -1,0 +1,37 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Forgejo - self-hosted git service
+After=local-fs.target network-online.target data-dirs.service
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/forgejo.env
+HealthCmd=curl --fail --silent --show-error --max-time 3 --output /dev/null http://127.0.0.1:3000/api/healthz
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=60s
+ContainerName=forgejo
+Image=codeberg.org/forgejo/forgejo:14-rootless
+Network=forgejo.network
+PublishPort=127.0.0.1:3002:3000
+PublishPort=2222:2222
+Volume=/mnt/service-data/forgejo/data:/var/lib/gitea:Z
+Volume=/mnt/service-data/forgejo/config:/etc/gitea:Z
+Volume=/etc/localtime:/etc/localtime:ro
+UserNS=keep-id:uid=1000,gid=1000
+
+# Server configuration - override at runtime without editing app.ini
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,11 @@
+[Unit]
+Description=Monitor lifecycle publication independently every five minutes
+
+[Timer]
+OnBootSec=4min
+OnUnitActiveSec=5min
+AccuracySec=15s
+Unit=waler-infra-status-health.service
+
+[Install]
+WantedBy=timers.target

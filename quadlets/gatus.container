@@ -1,0 +1,21 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Declarative service and job monitoring
+After=network-online.target waler-monitor.service
+Wants=waler-monitor.service
+RequiresMountsFor=/mnt/service-data
+[Container]
+ContainerName=gatus
+Image=ghcr.io/twin/gatus:stable
+Network=host
+Volume=/mnt/service-data/gatus/config:/config:ro,Z
+Volume=/mnt/service-data/gatus/data:/data:Z
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+[Install]
+WantedBy=default.target

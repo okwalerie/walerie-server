@@ -1,0 +1,16 @@
+[Unit]
+Description=Encrypted off-host Asahi configuration checkpoint (not home-wide backup)
+Wants=network-online.target
+After=network-online.target
+OnFailure=waler-maintenance-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/.local/libexec/waler-asahi-checkpoint
+UMask=0077
+MemoryHigh=768M
+MemoryMax=1536M
+CPUQuota=100%
+Nice=10
+TimeoutStartSec=2h
+Restart=no

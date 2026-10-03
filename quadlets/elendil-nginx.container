@@ -1,0 +1,31 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Elendil Nginx protected static portal
+After=elendil-authelia.service
+Requires=elendil-authelia.service
+RequiresMountsFor=/mnt/service-data/elendil
+
+[Container]
+HealthCmd=curl -fsS --max-time 5 --output /dev/null http://127.0.0.1:8080/
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=30s
+ContainerName=elendil-nginx
+Image=docker.io/nginxinc/nginx-unprivileged:stable
+Pod=elendil.pod
+Volume=/mnt/service-data/elendil/nginx.conf:/etc/nginx/nginx.conf:ro,Z
+Volume=/mnt/service-data/elendil/portal:/srv/portal:ro,Z
+Volume=/mnt/service-data/elendil/sites:/srv/sites:ro,Z
+Volume=/mnt/service-data/elendil/thumbnails:/srv/portal/thumbnails:ro,Z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=always
+RestartSec=30s
+
+[Install]
+WantedBy=default.target

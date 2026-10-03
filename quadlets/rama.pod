@@ -1,0 +1,19 @@
+[Unit]
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Rama single-node cluster pod (ZK + conductor + supervisor + AOR UI)
+
+[Pod]
+PodName=rama
+# Rama's own ports (1973 conductor, 2000 zk, 3000-4000 supervisor/workers)
+# stay inside the pod netns; only the two web UIs are published, loopback-only,
+# and fronted by `tailscale serve`.
+PublishPort=127.0.0.1:8888:8888
+PublishPort=127.0.0.1:1974:1974
+UserNS=keep-id:uid=1000,gid=1000
+
+[Install]
+WantedBy=default.target
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage

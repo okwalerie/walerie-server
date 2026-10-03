@@ -1,0 +1,30 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Buzz Redis
+After=network-online.target data-dirs.service buzz-network.service
+Requires=data-dirs.service buzz-network.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=buzz-redis
+Image=docker.io/library/redis@sha256:e7723ff73d963f5cc6d9c4643ea3d989527a402a319239054e9472a7fb9219a2
+Network=buzz.network
+EnvironmentFile=/mnt/service-data/buzz/redis.env
+Exec=/bin/sh -ec 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"'
+Volume=/mnt/service-data/buzz/redis:/data:Z
+HealthCmd=REDISCLI_AUTH="$$REDIS_PASSWORD" redis-cli --no-auth-warning ping | grep -qx PONG
+HealthInterval=5s
+HealthTimeout=3s
+HealthRetries=12
+HealthStartPeriod=5s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

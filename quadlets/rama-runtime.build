@@ -1,0 +1,10 @@
+[Unit]
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+
+[Build]
+ImageTag=localhost/rama-runtime:21
+SetWorkingDirectory=/mnt/service-data/rama/image
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
