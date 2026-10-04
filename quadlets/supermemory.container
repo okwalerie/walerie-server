@@ -1,0 +1,27 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Shared Supermemory API for Hermes agents
+After=network-online.target data-dirs.service
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=supermemory
+Image=localhost/supermemory:0.0.6
+PublishPort=127.0.0.1:6767:6767
+Volume=/mnt/service-data/supermemory/data:/data:Z
+EnvironmentFile=/mnt/service-data/supermemory/supermemory.env
+UserNS=keep-id:uid=1000,gid=1000
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+ExecStartPost=/usr/bin/tailscale serve --bg --https=6767 http://127.0.0.1:6767
+ExecStopPost=-/usr/bin/tailscale serve --https=6767 off
+
+[Install]
+WantedBy=default.target

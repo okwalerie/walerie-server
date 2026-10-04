@@ -1,0 +1,28 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Zulip Redis
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/zulip-redis.env
+HealthCmd=while read -r key value; do if [ "$$key" = requirepass ]; then export REDISCLI_AUTH="$$value"; break; fi; done < /usr/local/etc/redis/redis.conf; redis-cli --no-auth-warning ping | grep -qx PONG
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=30s
+Image=docker.io/redis:alpine
+ContainerName=zulip-redis
+Volume=%h/.config/zulip/redis.conf:/usr/local/etc/redis/redis.conf:ro,z
+Network=zulip.network
+Exec=redis-server /usr/local/etc/redis/redis.conf
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

@@ -1,0 +1,30 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Valerie Kim blog (valeriekim.ca)
+After=network-online.target data-dirs.service
+Wants=network-online.target
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/valeriekim-blog.env
+ContainerName=valeriekim-blog
+HealthCmd=node -e 'const h=require("http"); const r=h.get("http://127.0.0.1:3000/",s=>{s.resume();process.exit(s.statusCode===200?0:1)});r.setTimeout(5000,()=>{r.destroy();process.exit(1)});r.on("error",()=>process.exit(1));'
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=60s
+Image=localhost/valeriekim-blog:latest
+PublishPort=127.0.0.1:8096:3000
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=always
+RestartSec=30s
+
+[Install]
+WantedBy=default.target

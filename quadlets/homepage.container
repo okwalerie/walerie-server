@@ -1,0 +1,34 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Homepage dashboard for home.waler.ie
+After=local-fs.target network-online.target data-dirs.service
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/homepage.env
+ContainerName=homepage
+HealthCmd=wget -q --spider --timeout=5 http://127.0.0.1:3000/
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=60s
+Image=ghcr.io/gethomepage/homepage:latest
+PublishPort=127.0.0.1:8088:3000
+# Allow Homepage's server-side widgets to reach loopback collectors via 10.0.2.2.
+Network=slirp4netns:allow_host_loopback=true
+Volume=/mnt/service-data/homepage/config:/app/config:Z
+Volume=/etc/localtime:/etc/localtime:ro
+UserNS=keep-id:uid=1000,gid=1000
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

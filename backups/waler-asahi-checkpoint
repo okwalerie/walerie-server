@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""Encrypted off-host Asahi configuration checkpoint, NOT a home-wide backup."""
+import datetime,fcntl,hashlib,json,os,subprocess,tempfile
+from pathlib import Path
+H=Path.home();root=H/'.local/state/fleet-recovery/asahi-checkpoints';state=H/'.local/state/fleet-recovery/asahi-offhost';state.mkdir(parents=True,exist_ok=True,mode=0o700);os.umask(0o077)
+# Public SHA-256 archive metadata, independently rehashed before publication.
+# These are not credentials; changes require revalidation of the named archive.
+expected={
+ 'source-and-targets.tar.gz':'715ac22d2c859e0565e5993c1cc6a293fa4b2f0c6471cf54881597f9ae62840d', # pragma: allowlist secret
+ 'reconciled-source-and-targets.tar.gz':'58b8b14350f14a72b3b8c63437c91d8e8adddddaff461f1bd6c48051f3907f20', # pragma: allowlist secret
+}
+def digest(p):
+ h=hashlib.sha256()
+ with p.open('rb') as f:
+  for b in iter(lambda:f.read(1024*1024),b''):h.update(b)
+ return h.hexdigest()
+for name,value in expected.items():
+ p=root/name
+ if not p.is_file() or p.stat().st_mode&0o077 or digest(p)!=value:raise RuntimeError('Private checkpoint verification failed: '+name)
+# Share the actual recovery writer lock; no overlapping repository write/prune.
+lockpath=H/'.local/state/waler-backup/recovery.lock';lockpath.parent.mkdir(parents=True,exist_ok=True,mode=0o700)
+with lockpath.open('a') as lock:
+ fcntl.flock(lock,fcntl.LOCK_EX)
+ raw=subprocess.check_output(['bash','-c','set +x; source "$1"; export RESTIC_REPOSITORY RESTIC_PASSWORD_FILE RESTIC_SFTP_COMMAND; env -0','bash',str(H/'.config/waler-backup/repository.env')])
+ env=os.environ.copy()
+ for value in raw.split(b'\0'):
+  if b'=' in value:
+   k,v=value.split(b'=',1)
+   if k.startswith(b'RESTIC_'):env[k.decode()]=v.decode()
+ R=['restic','--no-cache','-o','sftp.command='+env['RESTIC_SFTP_COMMAND']]
+ with (state/'backup.jsonl').open('w') as output,(state/'private.log').open('w') as error:
+  result=subprocess.run(R+['backup',str(root),'--host','fedora','--tag','asahi-checkpoint','--tag','HOME-261','--json'],env=env,stdout=output,stderr=error)
+ if result.returncode:raise RuntimeError('Checkpoint upload failed; inspect private log')
+ summaries=[json.loads(line) for line in (state/'backup.jsonl').read_text().splitlines() if line.strip()]
+ summary=next((x for x in reversed(summaries) if x.get('message_type')=='summary'),None)
+ if not summary or not summary.get('snapshot_id'):raise RuntimeError('Missing real snapshot summary')
+ snapshots=json.loads(subprocess.check_output(R+['--no-lock','snapshots','--json'],env=env,text=True))
+ matches=[x for x in snapshots if x['id'].startswith(summary['snapshot_id']) and x.get('hostname')=='fedora' and 'asahi-checkpoint' in x.get('tags',[])]
+ if len(matches)!=1:raise RuntimeError('Exact checkpoint snapshot readback failed')
+ snap=matches[0];restore=Path(tempfile.mkdtemp(prefix='restore-',dir=state))
+ source=root/'reconciled-source-and-targets.tar.gz'
+ with (state/'restore.log').open('w') as log:
+  result=subprocess.run(R+['--no-lock','restore',snap['id'],'--target',str(restore),'--include',str(source),'--verify','--overwrite','never'],env=env,stdout=log,stderr=subprocess.STDOUT)
+ if result.returncode:raise RuntimeError('Checkpoint sample restore failed')
+ restored=restore/str(source).lstrip('/')
+ if digest(restored)!=expected[source.name] or any(digest(root/n)!=v for n,v in expected.items()):raise RuntimeError('Checkpoint restore/source digest mismatch')
+ proof={'snapshot_id':snap['id'],'snapshot_time':snap['time'],'verified_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'host':'fedora','scope':'two configuration reconciliation archives only; NOT a laptop home backup','hashes':expected,'restore_target':str(restore),'verified':True}
+ tmp=state/'verified.json.new';tmp.write_text(json.dumps(proof,indent=2)+'\n');os.replace(tmp,state/'verified.json')
+ print(json.dumps({k:proof[k] for k in ['snapshot_id','verified_at','scope','verified']}))

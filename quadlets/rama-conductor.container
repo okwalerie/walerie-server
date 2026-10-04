@@ -1,0 +1,32 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Rama conductor (cluster UI on :8888)
+After=local-fs.target network-online.target rama-zookeeper.service
+Wants=rama-zookeeper.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=rama-conductor
+HealthCmd=grep -aq rpl.rama.distributed.daemon.conductor /proc/1/cmdline && curl -fsS --max-time 5 --output /dev/null http://127.0.0.1:8888/
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=180s
+Pod=rama.pod
+Image=rama-runtime.build
+Volume=/mnt/service-data/rama/rama-1.9.0:/opt/rama:z
+Volume=/mnt/service-data/rama/data:/data:z
+
+Exec=/opt/rama/rama conductor
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=always
+RestartSec=30s
+TimeoutStartSec=900
+
+[Install]
+WantedBy=default.target

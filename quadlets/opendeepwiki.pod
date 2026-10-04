@@ -1,0 +1,19 @@
+[Unit]
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=OpenDeepWiki pod
+After=network-online.target data-dirs.service
+Wants=network-online.target
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Pod]
+PodName=opendeepwiki
+PublishPort=127.0.0.1:8102:3000
+PublishPort=127.0.0.1:18102:8080
+
+[Install]
+WantedBy=default.target
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage

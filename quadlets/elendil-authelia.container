@@ -1,0 +1,31 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Elendil Authelia authentication service
+After=elendil-pod.service
+Requires=elendil-pod.service
+RequiresMountsFor=/mnt/service-data/elendil
+
+[Container]
+HealthCmd=wget -q --spider --timeout=5 --tries=1 http://127.0.0.1:9091/auth/api/health
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=60s
+ContainerName=elendil-authelia
+Image=docker.io/authelia/authelia:4.39.9
+Pod=elendil.pod
+EnvironmentFile=/mnt/service-data/elendil/auth/config/environment
+Volume=/mnt/service-data/elendil/auth/config:/config:ro,Z
+Volume=/mnt/service-data/elendil/auth/data:/data:Z
+Volume=/mnt/service-data/elendil/auth/secrets:/secrets:ro,Z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=always
+RestartSec=30s
+
+[Install]
+WantedBy=default.target

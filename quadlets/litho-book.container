@@ -1,0 +1,28 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Litho Book generated documentation reader
+After=network-online.target data-dirs.service
+Wants=network-online.target
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data/litho/output
+
+[Container]
+Image=localhost/litho:1.5.1-1.0.2-0.3.11-home109
+ContainerName=litho-book
+PublishPort=127.0.0.1:8106:3000
+Volume=/mnt/service-data/litho/output:/output:ro,Z
+Exec=--docs-dir /output --host 0.0.0.0 --port 3000 --lang en
+ReadOnly=true
+NoNewPrivileges=true
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=on-failure
+RestartSec=30s
+MemoryMax=512M
+
+[Install]
+WantedBy=default.target

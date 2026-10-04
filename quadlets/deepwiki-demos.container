@@ -1,0 +1,31 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=DeepWiki comparison demonstration artifacts
+After=local-fs.target network-online.target data-dirs.service deepwiki-open.service
+Wants=network-online.target
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+HealthCmd=curl -fsS --max-time 5 --output /dev/null http://127.0.0.1:8080/
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=30s
+ContainerName=deepwiki-demos
+Image=docker.io/nginxinc/nginx-unprivileged:stable
+PublishPort=127.0.0.1:8101:8080
+Volume=/mnt/service-data/deepwiki-open/data/demos:/usr/share/nginx/html:ro,z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+ExecStartPost=/usr/bin/tailscale serve --bg --https=8101 http://127.0.0.1:8101
+ExecStopPost=-/usr/bin/tailscale serve --https=8101 off
+
+[Install]
+WantedBy=default.target

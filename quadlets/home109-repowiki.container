@@ -1,0 +1,31 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=RepoWiki official static HTML viewers
+After=network-online.target data-dirs.service
+Wants=network-online.target
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+HealthCmd=curl -fsS --max-time 5 --output /dev/null http://127.0.0.1:8080/
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=30s
+ContainerName=home109-repowiki
+Image=docker.io/nginxinc/nginx-unprivileged:stable
+PublishPort=127.0.0.1:8104:8080
+Volume=/mnt/service-data/repowiki/artifacts:/usr/share/nginx/html:ro,Z
+Volume=/mnt/service-data/repowiki/nginx.conf:/etc/nginx/conf.d/default.conf:ro,Z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+MemoryMax=256M
+
+[Install]
+WantedBy=default.target

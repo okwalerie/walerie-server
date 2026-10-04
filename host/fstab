@@ -1,0 +1,4 @@
+# /etc/fstab
+/dev/disk/by-id/scsi-0HC_Volume_105396986 /mnt/service-data ext4 discard,nofail,defaults 0 0
+/mnt/service-data/podman-storage /var/home/core/.local/share/containers/storage none bind,x-systemd.requires-mounts-for=/mnt/service-data 0 0
+/var/swap/ci-build.swap none swap defaults 0 0

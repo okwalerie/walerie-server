@@ -1,0 +1,33 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Buzz relay
+After=network-online.target data-dirs.service buzz-network.service buzz-postgres.service buzz-redis.service buzz-minio.service
+Requires=data-dirs.service buzz-network.service buzz-postgres.service buzz-redis.service buzz-minio.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=buzz-relay
+Image=ghcr.io/block/buzz@sha256:12763e38fd99fe8f4e63466a08ea8e3afbda4da0ebd1f51f0b57d78f9b082abe
+Network=buzz.network
+UserNS=keep-id:uid=1000,gid=1000
+EnvironmentFile=/mnt/service-data/buzz/relay.env
+PublishPort=127.0.0.1:8107:3000
+Volume=/mnt/service-data/buzz/git:/data/git:Z
+HealthCmd=curl --fail --silent --show-error --max-time 2 --output /dev/null http://127.0.0.1:8080/_readiness
+HealthInterval=10s
+HealthTimeout=3s
+HealthRetries=12
+HealthStartPeriod=30s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=always
+RestartSec=30s
+ExecStartPost=/usr/bin/tailscale serve --service=svc:buzz --bg --https=443 http://127.0.0.1:8107
+ExecStopPost=-/usr/bin/tailscale serve clear svc:buzz
+
+[Install]
+WantedBy=default.target

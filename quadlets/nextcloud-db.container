@@ -1,0 +1,29 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Nextcloud PostgreSQL Database
+After=data-dirs.service nextcloud-pod-pod.service
+Requires=data-dirs.service nextcloud-pod-pod.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/nextcloud-db.env
+HealthCmd=pg_isready -h 127.0.0.1 -t 3
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=30s
+Image=docker.io/library/postgres:16-alpine
+Pod=nextcloud-pod.pod
+Volume=/mnt/service-data/nextcloud/db:/var/lib/postgresql/data:Z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

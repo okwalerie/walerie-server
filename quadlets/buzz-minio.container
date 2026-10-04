@@ -1,0 +1,30 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Buzz MinIO object storage
+After=network-online.target data-dirs.service buzz-network.service
+Requires=data-dirs.service buzz-network.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=buzz-minio
+Image=quay.io/minio/minio@sha256:14cea493d9a34af32f524e538b8346cf79f3321eff8e708c1e2960462bd8936e
+Network=buzz.network
+EnvironmentFile=/mnt/service-data/buzz/minio.env
+Exec=server /data --console-address :9001
+Volume=/mnt/service-data/buzz/minio:/data:Z
+HealthCmd=curl --fail --silent --show-error --max-time 3 --output /dev/null http://127.0.0.1:9000/minio/health/live
+HealthInterval=5s
+HealthTimeout=5s
+HealthRetries=12
+HealthStartPeriod=10s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+
+[Install]
+WantedBy=default.target

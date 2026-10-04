@@ -1,0 +1,34 @@
+ingress:
+- hostname: frappe.waler.ie
+  service: http://localhost:8069
+- hostname: cloud.waler.ie
+  service: http://localhost:8080
+  originRequest:
+    noTLSVerify: true
+- hostname: home.waler.ie
+  service: http://localhost:8088
+- hostname: gallery.waler.ie
+  service: http://localhost:8092
+- hostname: gsb.waler.ie
+  service: http://localhost:18790
+- hostname: slop.waler.ie
+  service: http://127.0.0.1:8095
+- hostname: waler.ie
+  service: http://127.0.0.1:8095
+- hostname: www.waler.ie
+  service: http://127.0.0.1:8095
+- hostname: house.waler.ie
+  service: http://127.0.0.1:8102
+- hostname: math.waler.ie
+  service: http://127.0.0.1:8103
+- hostname: valeriekim.ca
+  service: http://127.0.0.1:8096
+- hostname: www.valeriekim.ca
+  service: http://127.0.0.1:8096
+- hostname: house.valeriekim.ca
+  service: http://127.0.0.1:8102
+- hostname: math.valeriekim.ca
+  service: http://127.0.0.1:8103
+- hostname: distinction.waler.ie
+  service: http://127.0.0.1:8105
+- service: http_status:404

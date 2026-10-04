@@ -1,0 +1,29 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=James Algebra static app (math.valeriekim.ca)
+After=network-online.target data-dirs.service
+Wants=network-online.target
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=james-algebra
+HealthCmd=curl -fsS --max-time 5 --output /dev/null http://127.0.0.1:8080/
+HealthInterval=30s
+HealthTimeout=10s
+HealthRetries=3
+HealthStartPeriod=30s
+Image=docker.io/nginxinc/nginx-unprivileged:alpine
+PublishPort=127.0.0.1:8103:8080
+Volume=/var/mnt/service-data/builds/james-algebra/poc/dist:/usr/share/nginx/html:ro,z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=always
+RestartSec=30s
+
+[Install]
+WantedBy=default.target

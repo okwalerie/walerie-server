@@ -1,0 +1,10 @@
+[Unit]
+Description=Send metadata-only Waler maintenance failure notification for %i
+StartLimitIntervalSec=1h
+StartLimitBurst=3
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 %h/walerie-server/scripts/notify-failure.py %i
+TimeoutStartSec=2min
+UMask=0077

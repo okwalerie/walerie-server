@@ -1,0 +1,39 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=Syncthing continuous file sync
+After=local-fs.target network-online.target data-dirs.service
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/syncthing.env
+HealthCmd=curl --fail --silent --show-error --max-time 3 --output /dev/null http://127.0.0.1:8384/rest/noauth/health
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=30s
+ContainerName=syncthing
+Image=docker.io/syncthing/syncthing:latest
+Network=host
+Volume=/mnt/service-data/syncthing:/var/syncthing:Z
+# Shared host trees must not be recursively relabeled on start.
+# Disable this container's label separation to use existing host labels.
+SecurityLabelDisable=true
+Volume=/var/home/core/Documents/org:/org
+Volume=/var/home/core/dev:/sync-dev
+Volume=/etc/localtime:/etc/localtime:ro
+UserNS=keep-id:uid=1000,gid=1000
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+RestartSec=30s
+Restart=always
+ExecStartPost=/usr/sbin/tailscale serve --bg --https=8384 http://127.0.0.1:8384
+ExecStopPost=-/usr/sbin/tailscale serve --https=8384 off
+
+[Install]
+WantedBy=default.target

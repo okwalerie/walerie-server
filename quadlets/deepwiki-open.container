@@ -1,0 +1,31 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=DeepWiki-Open local repository wiki service
+After=local-fs.target network-online.target data-dirs.service
+Wants=network-online.target
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/deepwiki-open.env
+ContainerName=deepwiki-open
+Image=localhost/deepwiki-open:latest
+PublishPort=127.0.0.1:8098:3000
+Volume=/mnt/service-data/deepwiki-open/data:/root/.adalflow:z
+Volume=/mnt/service-data/deepwiki-open/repos:/repos:ro,Z
+Volume=/mnt/service-data/deepwiki-open/deepwiki.env:/app/.env:ro,Z
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=on-failure
+RestartSec=30s
+MemoryMax=6G
+ExecStartPost=/usr/bin/tailscale serve --bg --https=8098 http://127.0.0.1:8098
+ExecStopPost=-/usr/bin/tailscale serve --https=8098 off
+
+[Install]
+WantedBy=default.target

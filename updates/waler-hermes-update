@@ -1,0 +1,521 @@
+#!/usr/bin/python3
+"""Fail-closed Waler maintenance supervisor. --dry-run never drains or updates."""
+import argparse
+import datetime as dt
+import fcntl
+import json
+import hashlib
+import math
+import uuid
+import os
+from pathlib import Path
+import re
+import signal
+import subprocess
+import sys
+import time
+
+HOME = Path('/var/home/core')
+HERMES = HOME / '.hermes'
+REPO = HERMES / 'hermes-agent'
+CLI = HOME / '.local/bin/hermes'
+STATE = HOME / '.local/state/hermes-maintenance'
+CONFIG = HOME / 'walerie-server/updates/maintenance.json'
+PRINCIPAL = 'waler-hermes-maintenance'
+os.environ['HERMES_HOME'] = str(HERMES)
+os.environ['PYTHONUNBUFFERED'] = '1'
+os.environ['GIT_TERMINAL_PROMPT'] = '0'
+os.umask(0o077)
+
+
+def now():
+    return dt.datetime.now(dt.timezone.utc)
+
+
+def timestamp(value):
+    parsed = dt.datetime.fromisoformat(value.replace('Z', '+00:00'))
+    if parsed.tzinfo is None:
+        raise ValueError('timestamp requires timezone')
+    return parsed
+
+
+def atomic(path, data):
+    tmp = path.with_suffix(path.suffix + '.tmp')
+    tmp.write_text(json.dumps(data, indent=2) + '\n')
+    os.chmod(tmp, 0o600)
+    tmp.replace(path)
+
+
+def command(args, timeout=120):
+    result = subprocess.run(args, capture_output=True, text=True, timeout=timeout)
+    if LOG is not None:
+        LOG.write(result.stdout + result.stderr)
+        LOG.flush()
+    if result.returncode:
+        raise RuntimeError('command failed: ' + Path(str(args[0])).name)
+    return result.stdout
+
+
+def backup_guard(config):
+    # Missing contract retains the original host/verified schema for compatibility.
+    # An explicitly unknown name must never silently select that legacy adapter.
+    if config.get('backup_contract') not in (None, 'waler-recovery-v1'):
+        raise RuntimeError('unknown backup receipt contract')
+    # This receipt must be written by the backup verifier, NEVER by this updater.
+    path = Path(config['backup_receipt'])
+    st = path.stat()
+    if st.st_uid != os.getuid() or st.st_mode & 0o022 or path.is_symlink():
+        raise RuntimeError('backup receipt owner/mode invalid')
+    proof = json.loads(path.read_text())
+    if not re.fullmatch(r'[a-f0-9]{64}', str(proof.get('snapshot_id', ''))):
+        raise RuntimeError('backup receipt requires full restic snapshot id')
+    if config.get('backup_contract') == 'waler-recovery-v1':
+        # Actual backup agent contract: proof only after remote snapshot lookup and
+        # --verify sampled restore; last-success touched only after proof publication.
+        import hashlib
+        success = path.with_name('last-success').stat()
+        if success.st_uid != os.getuid() or success.st_mode & 0o022:
+            raise RuntimeError('backup completion marker owner/mode invalid')
+        if not st.st_mtime <= success.st_mtime <= st.st_mtime + 120:
+            raise RuntimeError('backup proof/completion marker are incoherent')
+        sample = Path(proof['sample'])
+        if not sample.is_absolute() or '..' in sample.parts:
+            raise RuntimeError('backup sample path invalid')
+        restored = Path(proof['restore_target']) / str(sample).lstrip('/')
+        if hashlib.sha256(restored.read_bytes()).hexdigest() != proof['sha256']:
+            raise RuntimeError('backup restored sample digest no longer verifies')
+        verified_at = dt.datetime.fromtimestamp(success.st_mtime, dt.timezone.utc).isoformat()
+        ages = [(now() - timestamp(proof['time'])).total_seconds(),
+                (now() - timestamp(verified_at)).total_seconds()]
+    else:
+        if proof.get('host') != 'waler' or proof.get('verified') is not True:
+            raise RuntimeError('backup receipt not verified for Waler')
+        verified_at = proof['verified_at']
+        ages = [(now() - timestamp(verified_at)).total_seconds()]
+    if any(not 0 <= age <= config['max_backup_age_hours'] * 3600 for age in ages):
+        raise RuntimeError('verified backup is stale or future-dated')
+    return {'snapshot_id': proof['snapshot_id'], 'verified_at': verified_at}
+
+
+def clean_guard():
+    dirty = command(['git', '-C', str(REPO), 'status', '--porcelain', '--untracked-files=all'])
+    if dirty.strip():
+        raise RuntimeError('managed checkout dirty/untracked; refusing Hermes autostash')
+    if command(['git', '-C', str(REPO), 'branch', '--show-current']).strip() != 'main':
+        raise RuntimeError('managed checkout not on main; refuse unattended branch switch')
+
+
+def runtime(require_fresh=False):
+    data = json.loads((HERMES / 'gateway_state.json').read_text())
+    age = (now() - timestamp(data['updated_at'])).total_seconds()
+    # Idle gateways need not rewrite status continuously. PID/start-time proves
+    # liveness; a freshly acknowledged drain is required before any code mutation.
+    if age < 0 or (require_fresh and age > 120):
+        raise RuntimeError('gateway status lacks a fresh lifecycle acknowledgment')
+    pid = int(data['pid'])
+    if pid <= 1:
+        raise RuntimeError('invalid gateway pid')
+    os.kill(pid, 0)
+    # PID-reuse-safe authoritative helper, imported only by installed interpreter.
+    from gateway.status import runtime_status_pid_is_live
+    if not runtime_status_pid_is_live(data):
+        raise RuntimeError('gateway PID identity mismatch')
+    return data
+
+
+def cancel_owned_drain():
+    path = HERMES / '.drain_request.json'
+    if path.exists():
+        data = json.loads(path.read_text())
+        if data.get('principal') == PRINCIPAL:
+            # Presence-based cancellation, usable even if the venv was damaged.
+            path.unlink(missing_ok=True)
+
+
+class Deferred(RuntimeError):
+    """No install was attempted; harmless refusal must not arm recovery."""
+
+
+def profile_guard():
+    # Mirror backup._sibling_profile_homes without its exception-swallowing:
+    # snapshot/cron/config writers enumerate idle profiles too.
+    from hermes_cli.profiles import _get_default_hermes_home, _get_profiles_root, _PROFILE_ID_RE
+    default = _get_default_hermes_home()
+    if default.resolve() != HERMES.resolve():
+        raise RuntimeError('default profile home mismatch')
+    root = _get_profiles_root()
+    if root.exists():
+        for entry in root.iterdir():
+            if (entry.is_dir() and entry.name != 'default' and _PROFILE_ID_RE.match(entry.name)
+                    and entry.resolve() != HERMES.resolve()):
+                raise RuntimeError('sibling profile discovered; refuse cross-profile updater')
+    from hermes_cli.update_inventory import collect_runtime_inventory
+    if any(r.profile != 'default' for r in collect_runtime_inventory().runtimes):
+        raise RuntimeError('other profile runtime discovered; refuse cross-profile updater')
+
+
+def manual_serve_recovery_guard(receipt):
+    """Read-only discharge: only a provably gone incarnation settles manual debt.
+
+    Never use retain_receipt_manual_serves/warn_pending_manual_serves: they write
+    or unlink official evidence. Preserve settled rows/files for operator review.
+    """
+    def check(row, durable=False):
+        if not isinstance(row, dict) or row.get('kind') not in ('serve', 'dashboard'):
+            raise RuntimeError('official manual serve obligation malformed')
+        if not durable and (row.get('supervisor') != 'manual-serve'
+                            or row.get('restart_via') != 'respawn-argv'):
+            raise RuntimeError('official manual serve restart contract unknown')
+        if durable and (not isinstance(row.get('profile'), str) or not row['profile']):
+            raise RuntimeError('official manual serve reminder contract unknown')
+        pid = row.get('pid')
+        detail = row if durable else row.get('detail')
+        if type(pid) is not int or pid <= 0 or not isinstance(detail, dict):
+            raise RuntimeError('official manual serve identity malformed')
+        created = detail.get('create_time')
+        if ((durable and created is None) or (created is not None and
+                (type(created) not in (int, float) or not math.isfinite(created) or created <= 0))):
+            raise RuntimeError('official manual serve identity malformed')
+        from hermes_cli.process_identity import _pid_alive_matches
+        # None creation time can only discharge a provably dead PID, as upstream
+        # specifies. Unknown liveness/storage/identity must never become approval.
+        if _pid_alive_matches(pid, created) is not False:
+            raise RuntimeError('official manual serve restart obligation requires recovery')
+
+    pending = receipt.get('pending_manual_serves', [])
+    plan = receipt.get('plan', {})
+    if not isinstance(pending, list) or not isinstance(plan, dict):
+        raise RuntimeError('official manual serve receipt contract unknown')
+    runtimes = plan.get('runtimes', [])
+    if not isinstance(runtimes, list) or any(not isinstance(row, dict) for row in runtimes):
+        raise RuntimeError('official manual serve plan contract unknown')
+    for row in pending:
+        check(row)
+    # Upstream retains manual rows from the last plan as well as explicit pending
+    # rows; a reminder storage failure must not make a fresh receipt look clean.
+    for row in runtimes:
+        if row.get('kind') in ('serve', 'dashboard') and row.get('supervisor') == 'manual-serve':
+            check(row)
+    directory = HERMES / 'serve_restart_pending'
+    try:
+        directory.stat()
+    except FileNotFoundError:
+        if directory.is_symlink():
+            raise RuntimeError('official manual serve reminder directory invalid')
+        return
+    if directory.is_symlink() or not directory.is_dir():
+        raise RuntimeError('official manual serve reminder directory invalid')
+    # iterdir, unlike glob, propagates unreadable-directory errors. Unrecognized
+    # entries (including abandoned temporary writes) need explicit storage repair.
+    for path in directory.iterdir():
+        if path.suffix != '.json' or path.is_symlink() or not path.is_file():
+            raise RuntimeError('official manual serve reminder storage invalid')
+        check(json.loads(path.read_text(encoding='utf-8-sig')), durable=True)
+
+
+def official_recovery_guard(reviewed_receipt_sha256=None):
+    from hermes_cli._early_recovery import interrupted_pull_marker, git_operation_in_progress
+    from hermes_cli.update_cmd_fleet import _fleet_restart_obligation_armed
+    # install_state_dir is the PM-owned path, not a guessed venv location.
+    from pm.environments import install_state_dir
+    markers = [REPO / '.update-incomplete', REPO / '.lazy-refresh-incomplete',
+               install_state_dir(REPO) / '.repair-incomplete', interrupted_pull_marker(REPO)]
+    if any(p.exists() for p in markers) or git_operation_in_progress(REPO):
+        raise RuntimeError('official incomplete-install obligation requires recovery')
+    if _fleet_restart_obligation_armed():
+        raise RuntimeError('official fleet restart obligation requires recovery')
+    receipt = HERMES / 'logs/update_receipts/latest.json'
+    data = {}
+    if receipt.exists():
+        data = json.loads(receipt.read_text(encoding='utf-8-sig'))
+        if not isinstance(data, dict):
+            raise RuntimeError('official receipt contract unknown')
+        if reviewed_receipt_sha256 is None and (STATE / 'recovery-acknowledged.json').exists():
+            reviewed_receipt_sha256 = json.loads((STATE / 'recovery-acknowledged.json').read_text()).get('official_receipt_sha256')
+        reviewed = reviewed_receipt_sha256 == hashlib.sha256(receipt.read_bytes()).hexdigest()
+        if (data.get('schema') != 1
+                or data.get('outcome') not in (('success', 'partial', 'failed') if reviewed else ('success',))
+                or not data.get('finished_at') or data.get('gateway_restart', {}).get('incomplete')
+                or any(row.get('state') not in ('current', 'external') for row in data.get('fleet', []))):
+            raise RuntimeError('official receipt has unresolved recovery obligations')
+    manual_serve_recovery_guard(data)
+
+
+def failure_digest():
+    path = STATE / 'failure.json'
+    return hashlib.sha256(path.read_bytes()).hexdigest() if path.exists() else None
+
+
+def recovery_guard():
+    if (STATE / 'recovery-required.json').exists() or (STATE / 'in-progress.json').exists():
+        raise RuntimeError('recovery required; reviewed acknowledgment needed')
+    # Upgrade-safe: pre-existing failure.json is also an inhibit unless explicitly
+    # acknowledged by exact digest. Never delete historical failure evidence.
+    if (STATE / 'failure.json').exists():
+        ack = STATE / 'recovery-acknowledged.json'
+        if not ack.exists() or json.loads(ack.read_text()).get('failure_sha256') != failure_digest():
+            raise RuntimeError('historical failure requires reviewed acknowledgment')
+    official_recovery_guard()
+
+
+def record_failure(reason, **metadata):
+    record = {'id': uuid.uuid4().hex, 'at': now().isoformat(), 'reason': reason, **metadata}
+    # Latch first: a crash during history publication still inhibits the next run.
+    atomic(STATE / 'recovery-required.json', record)
+    history = STATE / 'failures'
+    history.mkdir(mode=0o700, exist_ok=True)
+    atomic(history / (record['id'] + '.json'), record)
+    previous = STATE / 'failure.json'
+    if previous.exists():
+        # Preserve even legacy evidence, including a corrupt/non-JSON record.
+        archived = history / ('legacy-' + failure_digest() + '.json')
+        if not archived.exists():
+            archived.write_bytes(previous.read_bytes())
+            archived.chmod(0o600)
+    atomic(previous, record)
+
+
+def acknowledge_recovery(path):
+    """Explicit operator review, never a no-op/update side effect.
+
+    The private JSON evidence must have schema=1, successful_recovery=true,
+    reviewer (nonempty), recovered_at (timezone, within 24h), head (exact full
+    checkout SHA), recovery_evidence (nonempty prose citing commands/results),
+    and recovery_id matching recovery-required.json.id (or 'legacy' if absent).
+    Stop the timer, review/repair the install and verify services *after* the
+    maintenance unit exits before writing this evidence. This command independently
+    rechecks checkout, official obligations, scope and local health, but cannot
+    authenticate the operator's prose or prove external channel delivery.
+    """
+    path = Path(path)
+    st = path.stat()
+    if path.is_symlink() or not path.is_file() or st.st_uid != os.getuid() or st.st_mode & 0o077:
+        raise RuntimeError('recovery evidence must be a private owned regular file')
+    data = json.loads(path.read_text())
+    latch = STATE / 'recovery-required.json'
+    recovery_id = json.loads(latch.read_text())['id'] if latch.exists() else 'legacy'
+    if (data.get('schema') != 1 or data.get('successful_recovery') is not True
+            or data.get('recovery_id') != recovery_id
+            or not isinstance(data.get('reviewer'), str) or not data['reviewer'].strip()
+            or not isinstance(data.get('recovery_evidence'), str) or not data['recovery_evidence'].strip()
+            or not 0 <= (now() - timestamp(data['recovered_at'])).total_seconds() <= 86400):
+        raise RuntimeError('documented successful recovery review missing or stale')
+    receipt = HERMES / 'logs/update_receipts/latest.json'
+    receipt_digest = hashlib.sha256(receipt.read_bytes()).hexdigest() if receipt.exists() else None
+    official_recovery_guard(reviewed_receipt_sha256=receipt_digest)
+    profile_guard()
+    clean_guard()
+    head = command(['git', '-C', str(REPO), 'rev-parse', 'HEAD']).strip()
+    if not re.fullmatch(r'[a-f0-9]{40,64}', head) or data.get('head') != head:
+        raise RuntimeError('recovery evidence does not match installed checkout')
+    unit_state = command(['systemctl', '--user', 'show', 'hermes-maintenance-update.service',
+                          '-p', 'ActiveState', '--value'], 15).strip()
+    if unit_state not in ('inactive', 'failed'):
+        raise RuntimeError('recovery review requires maintenance supervisor to have exited')
+    evidence = health(head)
+    # Refuse a supervisor event that arrived while validating the evidence.
+    if latch.exists() and json.loads(latch.read_text())['id'] != recovery_id:
+        raise RuntimeError('recovery changed during review')
+    if receipt.exists() and hashlib.sha256(receipt.read_bytes()).hexdigest() != receipt_digest:
+        raise RuntimeError('official recovery receipt changed during review')
+    official_recovery_guard(reviewed_receipt_sha256=receipt_digest)
+    ack = {'at': now().isoformat(), 'review': data, 'health': evidence,
+           'failure_sha256': failure_digest(), 'official_receipt_sha256': receipt_digest}
+    atomic(STATE / ('ack-' + uuid.uuid4().hex + '.json'), ack)
+    atomic(STATE / 'recovery-acknowledged.json', ack)
+    latch.unlink(missing_ok=True)
+    (STATE / 'in-progress.json').unlink(missing_ok=True)
+
+
+def quiesce(seconds):
+    from gateway.drain_control import write_drain_request
+    if (HERMES / '.drain_request.json').exists():
+        raise Deferred('another drain marker exists; refusing to take ownership')
+    runtime()
+    write_drain_request(principal=PRINCIPAL, suppress_notification=False)
+    deadline = time.monotonic() + seconds
+    idle_samples = 0
+    while time.monotonic() < deadline:
+        data = runtime()
+        fresh = 0 <= (now() - timestamp(data['updated_at'])).total_seconds() <= 120
+        if fresh and data.get('gateway_state') == 'draining' and data.get('active_agents') == 0:
+            idle_samples += 1
+            if idle_samples >= 3:
+                return
+        else:
+            idle_samples = 0
+        time.sleep(2)
+    raise Deferred('drain budget exceeded; update deferred without terminating conversation')
+
+
+def install_update():
+    # No --gateway: standalone supervisor must survive gateway restart.
+    with subprocess.Popen([str(CLI), 'update', '--backup', '--yes'],
+                          stdout=LOG, stderr=LOG, stdin=subprocess.DEVNULL,
+                          start_new_session=True) as child:
+        try:
+            code = child.wait(timeout=2100)
+        except subprocess.TimeoutExpired:
+            os.killpg(child.pid, signal.SIGTERM)
+            try:
+                child.wait(timeout=30)
+            except subprocess.TimeoutExpired:
+                os.killpg(child.pid, signal.SIGKILL)
+                child.wait()
+            raise RuntimeError('update exceeded 35 minute budget; inspect private logs before recovery')
+        if code:
+            raise RuntimeError('hermes update returned nonzero')
+
+
+def health(head):
+    deadline = time.monotonic() + 120
+    while time.monotonic() < deadline:
+        try:
+            for unit in ['hermes-gateway.service', 'hermes-dashboard.service']:
+                command(['systemctl', '--user', 'is-active', '--quiet', unit], 15)
+            data = runtime(require_fresh=True)
+            if data.get('gateway_state') == 'running' and data.get('code_sha') == head:
+                # Local dashboard HTTP liveness, no credentials or response body in report.
+                command(['curl', '--silent', '--show-error', '--fail', '--max-time', '10',
+                         '--output', '/dev/null', 'http://127.0.0.1:9119/health'], 15)
+                return {k: data.get(k) for k in ['pid', 'code_sha', 'code_version', 'gateway_state', 'active_agents']}
+        except (RuntimeError, OSError, ValueError, subprocess.TimeoutExpired):
+            pass
+        time.sleep(5)
+    raise RuntimeError('post-update version/service/dashboard health failed')
+
+
+LOG = None
+
+def main():
+    global LOG
+    parser = argparse.ArgumentParser(description=__doc__)
+    modes = parser.add_mutually_exclusive_group(required=True)
+    modes.add_argument('--dry-run', action='store_true')
+    modes.add_argument('--apply', action='store_true')
+    modes.add_argument('--supervisor-failure', action='store_true')
+    modes.add_argument('--acknowledge-recovery', metavar='PRIVATE_REVIEW_JSON',
+                       help='clear inhibit only after documented successful recovery and live checks')
+    args = parser.parse_args()
+    sys.path.insert(0, str(REPO))
+    if args.supervisor_failure:
+        if os.environ.get('SERVICE_RESULT', 'success') != 'success':
+            STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
+            os.chmod(STATE, 0o700)
+            # Serialize with explicit acknowledgment; an event arriving during
+            # review must latch AFTER it, never be erased by its unlink.
+            with open(STATE / 'update.lock', 'a') as supervisor_lock:
+                fcntl.flock(supervisor_lock, fcntl.LOCK_EX)
+                record_failure('systemd supervisor failure',
+                               service_result=os.environ.get('SERVICE_RESULT'))
+                cancel_owned_drain()
+        return 0
+    if not args.dry_run:
+        STATE.mkdir(mode=0o700, parents=True, exist_ok=True)
+        os.chmod(STATE, 0o700)
+        lock = open(STATE / 'update.lock', 'a')
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            lock.close()
+            print('Hermes maintenance: concurrent updater deferred', file=sys.stderr)
+            return 0 if args.apply else 1
+    started = False
+    installing = False
+    try:
+        if args.acknowledge_recovery:
+            acknowledge_recovery(args.acknowledge_recovery)
+            print('Hermes maintenance: reviewed recovery acknowledged; history retained')
+            return 0
+        # Must precede even --plan/--check: upstream checks can perform recovery.
+        recovery_guard()
+        profile_guard()
+        config = json.loads(CONFIG.read_text())
+        if args.apply and config.get('armed') is not True:
+            raise Deferred('rollout not armed after verification')
+        if args.apply:
+            LOG = open(STATE / ('run-' + uuid.uuid4().hex + '.log'), 'x')
+            atomic(STATE / 'in-progress.json', {'started_at': now().isoformat()})
+            started = True
+        before = command(['git', '-C', str(REPO), 'rev-parse', 'HEAD']).strip()
+        plan = command([str(CLI), 'update', '--plan'])
+        official_recovery_guard()
+        if args.dry_run:
+            print(plan, end='')
+            errors = []
+            for label, check in [('backup', lambda: backup_guard(config)), ('checkout', clean_guard),
+                                 ('gateway', runtime)]:
+                try:
+                    check()
+                    print(label + ': PASS')
+                except Exception as exc:
+                    errors.append(label)
+                    print(label + ': BLOCKED (' + str(exc) + ')')
+            print('armed: ' + str(config.get('armed') is True))
+            print('Read-only completed: no update, drain, restart, or receipt writes.')
+            return 1 if errors else 0
+        check = command([str(CLI), 'update', '--check'], 300)
+        official_recovery_guard()
+        if 'Already up to date.' in check and 'Update available' not in check:
+            atomic(STATE / 'last-check.json', {'at': now().isoformat(), 'result': 'no-update', 'head': before})
+            print('Hermes maintenance: no update; no services restarted')
+            return 0
+        if 'Update available' not in check:
+            raise RuntimeError('update check result unrecognized; refuse apply')
+        proof = backup_guard(config)
+        clean_guard()
+        profile_guard()
+        if command(['git', '-C', str(REPO), 'rev-parse', '--verify', 'origin/main']).strip() == '':
+            raise RuntimeError('update target ref missing')
+        command(['git', '-C', str(REPO), 'merge-base', '--is-ancestor', 'HEAD', 'origin/main'])
+        for protected in ['.lattice', 'tinker-atropos', 'vino', 'vulpea-journal']:
+            if command(['git', '-C', str(REPO), 'ls-tree', '--name-only', 'origin/main', '--', protected]).strip():
+                raise RuntimeError('upstream collides with protected untracked directory')
+        quiesce(config['drain_budget_seconds'])
+        # Revalidate immediately before application after potentially long drain.
+        proof = backup_guard(config)
+        clean_guard()
+        official_recovery_guard()
+        if (STATE / 'recovery-required.json').exists():
+            raise RuntimeError('supervisor recovery inhibit appeared during drain')
+        profile_guard()
+        atomic(STATE / 'pre-update.json', {'at': now().isoformat(), 'head': before, 'backup': proof})
+        installing = True
+        install_update()
+        cancel_owned_drain()
+        after = command(['git', '-C', str(REPO), 'rev-parse', 'HEAD']).strip()
+        evidence = health(after)
+        official_recovery_guard()
+        atomic(STATE / 'last-success.json', {'at': now().isoformat(), 'before': before,
+                                           'after': after, 'backup': proof, 'health': evidence})
+        # Persistent failure is intentionally NOT erased by no-op or successful runs.
+        print('Hermes maintenance: update and local version/health checks passed')
+        return 0
+    except Deferred as exc:
+        print('Hermes maintenance: DEFERRED; ' + str(exc))
+        return 0
+    except Exception as exc:
+        if args.apply and started:
+            record_failure(str(exc), install_attempted=installing)
+        print('Hermes maintenance: FAILED; ' + str(exc), file=sys.stderr)
+        return 1
+    finally:
+        if not args.dry_run:
+            try:
+                if started:
+                    cancel_owned_drain()
+            except Exception as exc:
+                record_failure('drain cleanup failed: ' + str(exc), install_attempted=installing)
+                raise
+            finally:
+                # Do not erase a stale marker belonging to an interrupted run.
+                if started:
+                    (STATE / 'in-progress.json').unlink(missing_ok=True)
+                if LOG is not None:
+                    LOG.close()
+                    LOG = None
+                lock.close()
+
+
+if __name__ == '__main__':
+    sys.exit(main())

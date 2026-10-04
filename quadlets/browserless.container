@@ -1,0 +1,37 @@
+[Unit]
+StartLimitIntervalSec=300
+StartLimitBurst=5
+RequiresMountsFor=/mnt/service-data %h/.local/share/containers/storage
+Description=browserless chromium on loopback
+After=network-online.target data-dirs.service
+Wants=network-online.target
+Requires=data-dirs.service
+RequiresMountsFor=/mnt/service-data
+
+[Container]
+ContainerName=browserless
+Image=ghcr.io/browserless/chromium@sha256:854780a6b349aa49f8bd86552bfb46df0ac49ad30fb9448db225f5ba510a1488
+PublishPort=127.0.0.1:3000:3000
+EnvironmentFile=%h/.config/browserless/browserless.env
+# Environment values provisioned privately; never committed.
+EnvironmentFile=%h/.config/walerie-server/secrets/browserless.env
+Volume=/mnt/service-data/browserless:/data:Z
+UserNS=keep-id:uid=999,gid=999
+DropCapability=ALL
+NoNewPrivileges=true
+ShmSize=1g
+HealthCmd=curl --fail --silent --show-error --max-time 3 --output /dev/null "http://127.0.0.1:3000/active?token=$$TOKEN"
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=30s
+
+[Service]
+ExecStartPre=/usr/bin/mountpoint -q /mnt/service-data
+ExecStartPre=/usr/bin/mountpoint -q %h/.local/share/containers/storage
+Restart=always
+RestartSec=30s
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target

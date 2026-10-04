@@ -1,0 +1,617 @@
+{
+  "captured_at": "20261002T060454Z",
+  "services": {
+    "browserless.container": {
+      "file": "browserless.container",
+      "unit": "browserless.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "buzz-minio.container": {
+      "file": "buzz-minio.container",
+      "unit": "buzz-minio.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "buzz-postgres.container": {
+      "file": "buzz-postgres.container",
+      "unit": "buzz-postgres.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "buzz-redis.container": {
+      "file": "buzz-redis.container",
+      "unit": "buzz-redis.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "buzz-relay.container": {
+      "file": "buzz-relay.container",
+      "unit": "buzz-relay.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "buzz.network": {
+      "file": "buzz.network",
+      "unit": "buzz-network.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "failed",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "deepwiki-demos.container": {
+      "file": "deepwiki-demos.container",
+      "unit": "deepwiki-demos.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "deepwiki-open.container": {
+      "file": "deepwiki-open.container",
+      "unit": "deepwiki-open.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "elendil-authelia.container": {
+      "file": "elendil-authelia.container",
+      "unit": "elendil-authelia.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "elendil-nginx.container": {
+      "file": "elendil-nginx.container",
+      "unit": "elendil-nginx.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "elendil.pod": {
+      "file": "elendil.pod",
+      "unit": "elendil-pod.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "explorer-gallery.container": {
+      "file": "explorer-gallery.container",
+      "unit": "explorer-gallery.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "forgejo.container": {
+      "file": "forgejo.container",
+      "unit": "forgejo.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "forgejo.network": {
+      "file": "forgejo.network",
+      "unit": "forgejo-network.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "failed",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "gatus.container": {
+      "file": "gatus.container",
+      "unit": "gatus.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "hermes-dashboard-proxy.container": {
+      "file": "hermes-dashboard-proxy.container",
+      "unit": "hermes-dashboard-proxy.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "failed",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "home109-public.container": {
+      "file": "home109-public.container",
+      "unit": "home109-public.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "home109-repowiki.container": {
+      "file": "home109-repowiki.container",
+      "unit": "home109-repowiki.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "homepage.container": {
+      "file": "homepage.container",
+      "unit": "homepage.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "house-of-bao.container": {
+      "file": "house-of-bao.container",
+      "unit": "house-of-bao.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "james-algebra.container": {
+      "file": "james-algebra.container",
+      "unit": "james-algebra.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "litho-book.container": {
+      "file": "litho-book.container",
+      "unit": "litho-book.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "lofsite.container": {
+      "file": "lofsite.container",
+      "unit": "lofsite.service",
+      "state": "paused",
+      "reason": "Missing localhost/lofsite image caused 100498 restarts; preserve definition and data until image/build recovery",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "changed_at": "20261002T060454.632778Z",
+      "classification": "confirmed"
+    },
+    "nextcloud-app.container": {
+      "file": "nextcloud-app.container",
+      "unit": "nextcloud-app.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "nextcloud-db.container": {
+      "file": "nextcloud-db.container",
+      "unit": "nextcloud-db.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "nextcloud-pod.pod": {
+      "file": "nextcloud-pod.pod",
+      "unit": "nextcloud-pod-pod.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "failed",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "nextcloud-redis.container": {
+      "file": "nextcloud-redis.container",
+      "unit": "nextcloud-redis.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "opendeepwiki-api.container": {
+      "file": "opendeepwiki-api.container",
+      "unit": "opendeepwiki-api.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "opendeepwiki-web.container": {
+      "file": "opendeepwiki-web.container",
+      "unit": "opendeepwiki-web.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "opendeepwiki.pod": {
+      "file": "opendeepwiki.pod",
+      "unit": "opendeepwiki-pod.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "failed",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "rama-aor.container": {
+      "file": "rama-aor.container",
+      "unit": "rama-aor.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "rama-conductor.container": {
+      "file": "rama-conductor.container",
+      "unit": "rama-conductor.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "rama-runtime.build": {
+      "file": "rama-runtime.build",
+      "unit": "rama-runtime-build.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "rama-supervisor.container": {
+      "file": "rama-supervisor.container",
+      "unit": "rama-supervisor.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "rama-zookeeper.container": {
+      "file": "rama-zookeeper.container",
+      "unit": "rama-zookeeper.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "rama.pod": {
+      "file": "rama.pod",
+      "unit": "rama-pod.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "slop.container": {
+      "file": "slop.container",
+      "unit": "slop.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "supermemory.container": {
+      "file": "supermemory.container",
+      "unit": "supermemory.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "failed",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "syncthing.container": {
+      "file": "syncthing.container",
+      "unit": "syncthing.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "valeriekim-blog.container": {
+      "file": "valeriekim-blog.container",
+      "unit": "valeriekim-blog.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "walerie-gallery.container": {
+      "file": "walerie-gallery.container",
+      "unit": "walerie-gallery.service",
+      "state": "active",
+      "reason": "Captured running service",
+      "observed": {
+        "ActiveState": "active",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "confirmed"
+    },
+    "zulip-db.container": {
+      "file": "zulip-db.container",
+      "unit": "zulip-db.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "zulip-memcached.container": {
+      "file": "zulip-memcached.container",
+      "unit": "zulip-memcached.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "zulip-rabbitmq.container": {
+      "file": "zulip-rabbitmq.container",
+      "unit": "zulip-rabbitmq.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "zulip-redis.container": {
+      "file": "zulip-redis.container",
+      "unit": "zulip-redis.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "zulip.container": {
+      "file": "zulip.container",
+      "unit": "zulip.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "masked"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    },
+    "zulip.network": {
+      "file": "zulip.network",
+      "unit": "zulip-network.service",
+      "state": "unclassified",
+      "reason": "Observed nonrunning unit; lifecycle intent not established. Do not skip backup requirements or activate automatically.",
+      "observed": {
+        "ActiveState": "inactive",
+        "UnitFileState": "generated"
+      },
+      "data_policy": "retain; backup coverage must be verified",
+      "retire_authorized": false,
+      "classification": "provisional; review before deployment"
+    }
+  }
+}
