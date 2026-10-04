@@ -1,0 +1,12 @@
+[Unit]
+Description=daily encrypted off-host backup of waler state
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+Persistent=true
+RandomizedDelaySec=45m
+AccuracySec=1m
+Unit=waler-backup.service
+
+[Install]
+WantedBy=timers.target
