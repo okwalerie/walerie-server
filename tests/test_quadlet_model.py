@@ -19,13 +19,13 @@ class CanonicalModelTests(unittest.TestCase):
     def setUpClass(cls):
         cls.units = model.generated_units(REPO)
 
-    def test_actual_nextcloud_requires_wants_and_pod_binding(self):
-        self.assertEqual(model.direct_dependencies(self.units['nextcloud-app.service']), [
-            'data-dirs.service', 'nextcloud-db.service', 'nextcloud-pod-pod.service',
-            'nextcloud-redis.service', 'podman-user-wait-network-online.service'])
+    def test_actual_buzz_relay_requires_stack(self):
+        self.assertEqual(model.direct_dependencies(self.units['buzz-relay.service']), [
+            'buzz-minio.service', 'buzz-network.service', 'buzz-postgres.service', 'buzz-redis.service',
+            'data-dirs.service', 'podman-user-wait-network-online.service'])
 
-    def test_actual_forgejo_implicit_network(self):
-        self.assertIn('forgejo-network.service', model.direct_dependencies(self.units['forgejo.service']))
+    def test_actual_buzz_network(self):
+        self.assertIn('buzz-network.service', model.direct_dependencies(self.units['buzz-postgres.service']))
 
     def test_actual_rama_build_pod_and_wants(self):
         deps = model.direct_dependencies(self.units['rama-supervisor.service'])
@@ -34,8 +34,8 @@ class CanonicalModelTests(unittest.TestCase):
         self.assertIn('rama-conductor.service', deps)
 
     def test_actual_generated_pod_wants_all_members(self):
-        deps = model.direct_dependencies(self.units['nextcloud-pod-pod.service'])
-        for unit in ['nextcloud-app.service', 'nextcloud-db.service', 'nextcloud-redis.service']:
+        deps = model.direct_dependencies(self.units['rama-pod.service'])
+        for unit in ['rama-aor.service', 'rama-conductor.service', 'rama-supervisor.service', 'rama-zookeeper.service']:
             self.assertIn(unit, deps)
 
     def test_nonservice_direct_activation_not_discarded(self):
@@ -147,7 +147,7 @@ Wants=not-a-systemd-edge.service
 
     def test_generator_failure_partial_output_and_unavailability_fail_closed(self):
         outcomes = [SimpleNamespace(returncode=1, stdout=''),
-                    SimpleNamespace(returncode=0, stdout='---forgejo.service---\n[Unit]\n'),
+                    SimpleNamespace(returncode=0, stdout='---gatus.service---\n[Unit]\n'),
                     SimpleNamespace(returncode=0, stdout=''),
                     OSError('missing generator'), model.TimeoutExpired(model.GENERATOR, 30)]
         for outcome in outcomes:
