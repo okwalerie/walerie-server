@@ -115,26 +115,26 @@ class LifecycleTests(unittest.TestCase):
  def test_authorized_wants_resume_only_starts_named_unit(self):self.activation_fixture()
  def test_authorized_network_first_deploy_only_starts_named_unit(self):self.activation_fixture(network=True)
  def test_changed_network_redeploy_reviews_new_not_old_edge(self):self.activation_fixture(network=True,redeploy=True)
- def test_generated_wants_from_canonical_nextcloud_gate_cold_database(self):
+ def test_generated_requires_from_canonical_buzz_gate_cold_database(self):
   canonical=Path(__file__).parents[1]
-  self.source.write_text((canonical/'quadlets/nextcloud-app.container').read_text())
-  self.manifest['services']={'nextcloud-app.container':{'file':'demo.container','unit':'demo.service','state':'paused'}}
-  for name in ['nextcloud-pod.pod','nextcloud-db.container','nextcloud-redis.container']:
+  self.source.write_text((canonical/'quadlets/buzz-relay.container').read_text())
+  self.manifest['services']={'buzz-relay.container':{'file':'demo.container','unit':'demo.service','state':'paused'}}
+  for name in ['buzz.network','buzz-postgres.container','buzz-redis.container','buzz-minio.container']:
    (self.repo/'quadlets'/name).write_text((canonical/'quadlets'/name).read_text())
    self.manifest['services'][name]=json.loads((canonical/'services.json').read_text())['services'][name]
   self.mp.write_text(json.dumps(self.manifest));calls=[];active=False
-  def observed(unit):return {'ActiveState':'inactive' if unit=='nextcloud-db.service' or (unit=='demo.service' and not active) else 'active'}
+  def observed(unit):return {'ActiveState':'inactive' if unit=='buzz-postgres.service' or (unit=='demo.service' and not active) else 'active'}
   def command(*args):
    nonlocal active
    calls.append(args)
    if args[0]=='start':active=True
   with patch.object(m.Path,'home',return_value=self.home),patch.object(m,'requirements',return_value=[]),patch.object(m,'observe',side_effect=observed),patch.object(m,'run',side_effect=command),patch.object(m.subprocess,'run',return_value=SimpleNamespace(returncode=0)):
-   preview=m.execute(self.repo,self.home,'nextcloud-app.container','active','cold database preview')
-   self.assertEqual(preview['dependency_activation'],['nextcloud-db.service']);self.assertIn('nextcloud-redis.service',preview['dependencies'])
-   with self.assertRaisesRegex(ValueError,'--allow-dependencies'):m.execute(self.repo,self.home,'nextcloud-app.container','active','refuse cold bootstrap',True)
+   preview=m.execute(self.repo,self.home,'buzz-relay.container','active','cold database preview')
+   self.assertEqual(preview['dependency_activation'],['buzz-postgres.service']);self.assertIn('buzz-redis.service',preview['dependencies'])
+   with self.assertRaisesRegex(ValueError,'--allow-dependencies'):m.execute(self.repo,self.home,'buzz-relay.container','active','refuse cold bootstrap',True)
    self.assertEqual(calls,[])
-   plan=m.execute(self.repo,self.home,'nextcloud-app.container','active','isolated authorization',True,False,True)
-  self.assertEqual(plan['effects'],['nextcloud-db.service']);self.assertIn(('start','demo.service'),calls);self.assertFalse(any('nextcloud-db.service' in c for c in calls))
+   plan=m.execute(self.repo,self.home,'buzz-relay.container','active','isolated authorization',True,False,True)
+  self.assertEqual(plan['effects'],['buzz-postgres.service']);self.assertIn(('start','demo.service'),calls);self.assertFalse(any('buzz-postgres.service' in c for c in calls))
  def test_generation_failure_refuses_before_mutation(self):
   quadlet_model=sys.modules['quadlet_model']
   self.provision();before=self.mp.read_bytes()
