@@ -21,8 +21,6 @@
 /var/home/core/walerie-server
 /var/home/zinnia/dev
 /var/home/zinnia/work
-/var/home/zinnia/.hermes/.env
-/var/home/zinnia/.hermes/config.yaml
 /etc/fstab
 /etc/systemd/system
 /etc/cloudflared/config.yml

@@ -36,3 +36,6 @@
 /var/home/core/.hermes/installs
 /var/home/core/.hermes/tools
 /var/home/core/.hermes/hermes-agent
+# unreadable to core: another user's beads state, and a root-only legacy copy
+/var/home/zinnia/dev/furehScheduling/.beads
+/var/home/core/archive/anki-mcp/leftovers-20260413-225926/etc/cloudflared
