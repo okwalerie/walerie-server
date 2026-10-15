@@ -22,7 +22,6 @@ Volume=/mnt/service-data/syncthing:/var/syncthing:Z
 # Shared host trees must not be recursively relabeled on start.
 # Disable this container's label separation to use existing host labels.
 SecurityLabelDisable=true
-Volume=/var/home/core/Documents/org:/org
 Volume=/var/home/core/dev:/sync-dev
 Volume=/etc/localtime:/etc/localtime:ro
 UserNS=keep-id:uid=1000,gid=1000
