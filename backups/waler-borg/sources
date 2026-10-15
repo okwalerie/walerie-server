@@ -19,8 +19,6 @@
 /var/home/core/dev
 /var/home/core/personal-os
 /var/home/core/walerie-server
-/var/home/zinnia/dev
-/var/home/zinnia/work
 /etc/fstab
 /etc/systemd/system
 /etc/cloudflared/config.yml
