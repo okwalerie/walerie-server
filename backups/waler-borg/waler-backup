@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+# Daily borg backup of waler to the Hetzner Storage Box.
+#
+# Consistency model, no local staging beyond small dumps:
+# - Postgres and Hermes SQLite are dumped logically; their raw files are excluded.
+# - Rama is stopped only while its own archive is written, then restarted.
+# - Everything else is copied live.
+# borg runs under `podman unshare` so rootless-container files owned by
+# subordinate uids are readable; restore under `podman unshare` too.
+set -euo pipefail
+umask 077
+
+conf=$HOME/.config/waler-backup
+state=$HOME/.local/state/waler-backup
+dumps=/mnt/service-data/.backup-dumps
+
+export BORG_REPO=ssh://u576392@u576392.your-storagebox.de:23/./backups/waler-borg
+export BORG_RSH="ssh -F /dev/null -o UserKnownHostsFile=$HOME/.ssh/known_hosts -o IdentitiesOnly=yes -o BatchMode=yes -i $HOME/.ssh/id_ed25519"
+export BORG_REMOTE_PATH=borg-1.4
+export BORG_PASSCOMMAND="cat $conf/borg-passphrase"
+
+rama_units=(rama-aor.service rama-supervisor.service rama-conductor.service rama-zookeeper.service)
+stopped=()
+
+log() { echo "waler-backup: $*"; }
+borg_() { podman unshare borg "$@"; }
+# exit 1 means the archive was written with warnings (e.g. a file changed while
+# being read); only treat >=2 as failure. staleness is caught by the monitor.
+borg_create() { podman unshare borg create "$@" || [[ $? -eq 1 ]]; }
+
+resume_rama() {
+  local i
+  for ((i=${#stopped[@]}-1; i>=0; i--)); do
+    systemctl --user start "${stopped[i]}" || log "error: failed to restart ${stopped[i]}"
+  done
+  stopped=()
+}
+trap resume_rama EXIT
+
+mountpoint -q /mnt/service-data
+mkdir -p "$state"
+
+log "logical dumps"
+rm -rf -- "$dumps"
+mkdir -p "$dumps/hermes"
+excludes=("$conf/excludes")
+if podman container exists buzz-postgres && [[ $(podman inspect -f '{{.State.Running}}' buzz-postgres) == true ]]; then
+  podman exec buzz-postgres pg_dumpall -U buzz > "$dumps/buzz-postgres.sql"
+  printf '%s\n' /mnt/service-data/buzz/postgres > "$dumps/raw-db.exclude"
+  excludes+=("$dumps/raw-db.exclude")
+fi
+python3 - "$HOME/.hermes" "$dumps/hermes" <<'PY'
+import pathlib, sqlite3, sys
+src, dst = map(pathlib.Path, sys.argv[1:])
+for db in src.glob('*.db'):
+    with sqlite3.connect(db.as_uri() + '?mode=ro', uri=True, timeout=60) as s, sqlite3.connect(dst / db.name) as d:
+        s.backup(d)
+        if d.execute('PRAGMA quick_check').fetchone()[0] != 'ok':
+            sys.exit(f'sqlite copy failed quick_check: {db.name}')
+PY
+
+log "rama archive (cluster stopped)"
+for u in "${rama_units[@]}"; do
+  if systemctl --user is-active --quiet "$u"; then stopped+=("$u"); systemctl --user stop "$u"; fi
+done
+borg_create --stats --compression zstd,6 ::'rama-{now:%Y-%m-%dT%H:%M}' /mnt/service-data/rama
+resume_rama
+
+log "main archive"
+mapfile -t sources < <(grep -vE '^\s*(#|$)' "$conf/sources" | while read -r p; do [[ -e $p ]] && echo "$p"; done)
+borg_create --stats --compression zstd,6 --exclude-caches \
+  $(printf -- '--exclude-from %s ' "${excludes[@]}") \
+  ::'waler-{now:%Y-%m-%dT%H:%M}' "${sources[@]}" "$dumps"
+
+log "prune and compact"
+for prefix in waler rama; do
+  borg_ prune --glob-archives "$prefix-*" --keep-daily 14 --keep-weekly 8 --keep-monthly 12 --keep-yearly 3
+done
+borg_ compact
+
+if [[ $(date +%u) == 7 ]]; then
+  log "weekly repository check"
+  borg_ check --repository-only
+fi
+
+rm -rf -- "$dumps"
+touch "$state/last-success"
+log "done"

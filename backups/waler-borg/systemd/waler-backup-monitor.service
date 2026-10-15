@@ -1,0 +1,7 @@
+[Unit]
+Description=alert when the last successful waler backup is older than 36h
+OnFailure=waler-maintenance-alert@%n.service
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/libexec/waler-backup-monitor 36

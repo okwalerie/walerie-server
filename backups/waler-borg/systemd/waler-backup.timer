@@ -1,0 +1,11 @@
+[Unit]
+Description=daily borg backup of waler
+
+[Timer]
+# 04:00 Mountain Time, outside the evening work window.
+OnCalendar=*-*-* 04:00:00 America/Denver
+RandomizedDelaySec=15min
+Persistent=true
+
+[Install]
+WantedBy=timers.target
