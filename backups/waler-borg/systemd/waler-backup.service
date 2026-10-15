@@ -1,0 +1,17 @@
+[Unit]
+Description=daily borg backup of waler to the storage box
+Documentation=file://%h/walerie-server/backups/waler-borg/README.md
+ConditionPathIsMountPoint=/mnt/service-data
+After=network-online.target
+Wants=network-online.target
+OnFailure=waler-maintenance-alert@%n.service
+
+[Service]
+Type=oneshot
+Environment=PATH=%h/.local/bin:/home/linuxbrew/.linuxbrew/bin:/usr/local/bin:/usr/bin
+ExecStart=%h/.local/libexec/waler-backup
+UMask=0077
+Nice=10
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+TimeoutStartSec=6h

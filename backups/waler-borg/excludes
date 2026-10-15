@@ -1,0 +1,38 @@
+# rama has its own archive, taken while the cluster is stopped
+/mnt/service-data/rama
+# raw container storage and filesystem detritus
+/mnt/service-data/podman-storage
+/mnt/service-data/lost+found
+/mnt/service-data/buzz/redis
+/mnt/service-data/syncthing/config/index-*
+# reconstructible build and tool state
+**/.cache
+**/node_modules
+**/.venv
+**/__pycache__
+**/target
+**/.git/worktrees
+# agent and app ephemera; settings, skills and auth remain
+/var/home/core/.claude/cache
+/var/home/core/.claude/debug
+/var/home/core/.claude/downloads
+/var/home/core/.claude/file-history
+/var/home/core/.claude/paste-cache
+/var/home/core/.claude/projects
+/var/home/core/.claude/remote
+/var/home/core/.claude/session-env
+/var/home/core/.claude/shell-snapshots
+/var/home/core/.claude/telemetry
+/var/home/core/.codex/log
+/var/home/core/.codex/tmp
+/var/home/core/.codex/.tmp
+/var/home/core/.codex/packages
+/var/home/core/.hermes/*.db
+/var/home/core/.hermes/*.db-*
+/var/home/core/.hermes/audio_cache
+/var/home/core/.hermes/cache
+/var/home/core/.hermes/image_cache
+/var/home/core/.hermes/logs
+/var/home/core/.hermes/installs
+/var/home/core/.hermes/tools
+/var/home/core/.hermes/hermes-agent

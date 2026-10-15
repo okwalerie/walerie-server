@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# Fail (and so trigger the alert unit) when the last successful backup is too old.
+set -euo pipefail
+marker=$HOME/.local/state/waler-backup/last-success
+max_age_hours=${1:-36}
+[[ -e $marker ]] || { echo "no successful backup recorded"; exit 1; }
+age=$(( ($(date +%s) - $(stat -c %Y "$marker")) / 3600 ))
+(( age <= max_age_hours )) || { echo "last successful backup ${age}h ago"; exit 1; }
+echo "last successful backup ${age}h ago"
